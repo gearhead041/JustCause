@@ -1,0 +1,191 @@
+@page "/practicals"
+@attribute [Authorize]
+
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+
+<div class="my-flex">
+    <div>
+        <h2>Practicals</h2>
+    </div>
+    <div id="button-group">
+        <a class="btn btn-primary" href="/practicals/create">Add Practical</a>
+        <button class="btn btn-secondary" @onclick="@(async()=> await DownloadFile(0))">Download All Student
+            Data</button>
+    </div>
+</div>
+
+@if (IsDownloading)
+{
+    <div class="alert alert-info info-box">
+        <p>Downloading...</p>
+    </div>
+}
+
+@if (Practicals == null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    @if (!Practicals.Any())
+    {
+        <p>Looks like no practicals have been added.</p>
+    }
+    <table class="table table-striped">
+        <thead>
+            <th>
+                Name
+            </th>
+            <th>
+                Number of Students Registered
+            </th>
+            <th>
+                Max Number of Students
+            </th>
+            <th></th>
+
+        </thead>
+        @foreach (var practical in Practicals)
+        {
+            <tr>
+                <td>
+                    <a href="/practicals/@practical.Id">
+                        @practical.Name
+                    </a>
+                </td>
+                @if (practical.StudentRegistrations != null)
+                {
+                    <td>
+                        @practical.StudentRegistrations.Count
+                    </td>
+                }
+                <td>
+                    @practical.MaxSize
+                </td>
+                <td>
+                    <div class="button-group">
+                        <button class="download-button" @onclick="@(async  ()=> await DownloadFile(practical.Id))">
+                            <i class="fa-solid fa-file-arrow-down fa-2xl"></i>
+                        </button>
+                        <button class="edit-button" @onclick="@( () => UpdatePractical(practical.Id))">
+                            <i class="fa-regular fa-pen-to-square fa-2xl"></i>
+                        </button>
+                        <button class="delete-button" @onclick="@(async () => await DeletePractical(practical.Id))">
+                            <i class="fa-solid fa-trash-can fa-2xl"></i>
+                        </button>
+
+                    </div>
+                </td>
+            </tr>
+        }
+    </table>
+}
+
+@code {
+    IEnumerable<PracticalDto>? Practicals;
+
+    bool IsDownloading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var practicals = await HttpClient.GetFromJsonAsync<List<PracticalDto>>
+        ($"{NavigationManager.BaseUri}api/practicals");
+        Practicals = practicals;
+    }
+
+    async Task DownloadFile(int practicalId = 0)
+    {
+        var message = new
+        {
+            title = "Are you sure?",
+            text = $"Click to confirm download.",
+            icon = "info",
+            buttons = new
+            {
+                abort = new
+                {
+                    text = "Cancel",
+                    value = false
+                },
+                confirm = new
+                {
+                    text = "Confirm",
+                    value = true
+                }
+            },
+            dangerMode = false
+        };
+
+        if (await JsRuntime.InvokeAsync<bool>("swal", message))
+        {
+            IsDownloading = true;
+            StateHasChanged();
+            string fileName;
+
+            if (practicalId == 0)
+            {
+                fileName = "Student Registrations ";
+            }
+            else
+            {
+                var practicalToSend = Practicals!.SingleOrDefault(p => p.Id == practicalId);
+                fileName = "Student Registrations " + practicalToSend!.Name;
+            }
+
+            var response = await HttpClient.GetAsync($"{NavigationManager.BaseUri}api/export/{practicalId}");
+            var fileBytes = await response.Content.ReadAsByteArrayAsync();
+            fileName += $" {DateTime.Now.ToString("yyyy-MM-dd")}.xlsx";
+            await JsRuntime.InvokeAsync<object>("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
+
+            IsDownloading = false;
+            StateHasChanged();
+        }
+    }
+
+    async Task DeletePractical(int practicalId)
+    {
+        var message = new
+        {
+            title = "Are you sure you want to delete this practical?",
+            text = $"Click to confirm",
+            icon = "warning",
+            buttons = new
+            {
+                abort = new
+                {
+                    text = "Cancel",
+                    value = false
+                },
+                confirm = new
+                {
+                    text = "Confirm",
+                    value = true
+                }
+            },
+            dangerMode = false
+        };
+
+        if (await JsRuntime.InvokeAsync<bool>("swal", message))
+        {
+            var response = await HttpClient.DeleteAsync($"{NavigationManager.BaseUri}api/practicals/{practicalId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var successMessage = new
+                {
+                    title = "Practical Deleted",
+                    icon = "success"
+                };
+                await JsRuntime.InvokeVoidAsync("swal", successMessage);
+                StateHasChanged();
+            }
+        }
+
+    }
+
+    void UpdatePractical(int practicalId )
+    {
+        NavigationManager.NavigateTo($"/practicals/edit/{practicalId}");
+    }
+}

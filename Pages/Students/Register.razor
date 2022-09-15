@@ -1,0 +1,101 @@
+﻿@page "/"
+@using JustCause.Dtos
+
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+
+<div class="card">
+	<div class="card-header">
+		<h3>Register Your EDS Practical</h3>
+	</div>
+	@if (Practicals == null)
+	{
+		<h2>Loading...</h2>
+	}
+	else
+	{
+		<div class="card-body">
+			<i class="fa-solid fa-circle-user fa-5x"></i>
+			<EditForm Model="Student" class="form-box" OnValidSubmit=HandleSubmit>
+				<DataAnnotationsValidator />
+				<ValidationSummary />
+				<label>
+					Full Name
+				</label>
+				<InputText class="form-control my-2" @bind-Value="Student.Name" />
+				<label>
+					Matric Number
+				</label>
+				<InputText class="form-control my-2" @bind-Value="Student.MatricNumber" />
+				<label>
+					Level
+				</label>
+				<InputText class="form-control my-2" @bind-Value="Student.Level"/>
+				<br />
+				<label>
+					Select A Practical
+				</label>
+				<select class="form-control selectpicker" data-live-search="true" @bind="@Student.PracticalId">
+					@foreach (var practical in Practicals)
+					{
+						<option data-tokens="@practical.Name" value="@practical.Id">@practical.Name</option>
+					}
+				</select>
+				<br />
+				<button type="submit" class="btn btn-primary">Submit</button>
+			</EditForm>
+		</div>
+	}
+</div>
+
+@code {
+	StudentDto Student = new();
+	IEnumerable<PracticalDto>? Practicals;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await JsRuntime.InvokeVoidAsync("InitSelectPicker",
+		DotNetObjectReference.Create(this), "OnSelectedValue", ".selectpicker");
+	}
+
+	[JSInvokable]
+	public void OnSelectedValue(string val)
+	{
+		Student.PracticalId = int.Parse(val);
+		StateHasChanged();
+	}
+	protected override async Task OnInitializedAsync()
+	{
+		var practicals = await HttpClient.GetFromJsonAsync<List<PracticalDto>>
+			($"{NavigationManager.BaseUri}api/practicals");
+		if(practicals != null)
+			Practicals = practicals.Where( p => p!.StudentRegistrations!.Count() < p.MaxSize);
+	}
+
+	async Task HandleSubmit()
+	{
+		var response = await HttpClient.PostAsJsonAsync<StudentDto>($"{NavigationManager.BaseUri}api/students", Student);
+
+		if (response.IsSuccessStatusCode)
+		{
+
+			var message = new 
+			{
+				title = "Registration Succesful!",
+				icon = "success"
+			};
+			 
+			await JsRuntime.InvokeVoidAsync("swal",message);
+
+			var location = response.Headers.Location?.ToString();
+			if(location != null)
+			{
+				var id = location.Split('/');
+				NavigationManager.NavigateTo($"/students/details/{id[id.Length - 1]}");
+			}
+		}
+
+	}
+}

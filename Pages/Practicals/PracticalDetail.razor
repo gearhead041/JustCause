@@ -1,0 +1,54 @@
+@page "/practicals/{practicalid:int}"
+@attribute [Authorize]
+
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+
+@if (Practical == null)
+{
+    <h2>Loading ...</h2>
+}
+else
+{
+    <h2>@Practical.Name</h2>
+    <br />
+    <p>Max Size: @Practical.MaxSize</p>
+    @if (Practical.StudentRegistrations != null)
+    {
+        <table class="table">
+            <thead>
+                <th>Name</th>
+                <th>Matric Number</th>
+            </thead>
+            <tbody>
+                @foreach (var student in Practical.StudentRegistrations)
+                {
+                    <tr>
+                        <td>
+                            @student.Name
+                        </td>
+                        <td>
+                            @student.MatricNumber
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+
+    [Parameter]
+    public int PracticalId { get; set; }
+
+    PracticalDto? Practical;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var practical = await HttpClient
+        .GetFromJsonAsync<PracticalDto>($"{NavigationManager.BaseUri}api/practicals/{PracticalId}");
+        if (practical != null)
+            Practical = practical;
+    }
+}

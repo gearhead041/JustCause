@@ -1,0 +1,44 @@
+﻿@page "/practicals/create"
+@attribute [Authorize]
+
+@using JustCause.Dtos
+@inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+@inject IJSRuntime JsRuntime
+
+<h3>Add New Practical</h3>
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+	<div class="alert alert-danger">
+		@errorMessage
+	</div>
+}
+<EditForm Context="editContext" Model="Practical" OnValidSubmit=HandleSubmit>
+	<DataAnnotationsValidator />
+	<ValidationSummary />
+	<div class="form-group">
+		<label class="form-label">Name</label>
+		<InputText class="form-control my-3" @bind-Value="Practical.Name" />
+	</div>
+	<div class="form-group">
+		<label>Max Number of Spaces</label>
+		<InputNumber @bind-Value="Practical.MaxSize" />
+	</div>
+	<button type="submit" class="btn btn-primary my-2">Create</button>
+	<a class="btn btn-secondary" href="/practicals">Back To List</a>
+</EditForm>
+
+@code {
+	PracticalDto Practical = new();
+	string? errorMessage;
+	async Task HandleSubmit()
+	{
+		var result = await HttpClient
+		.PostAsJsonAsync<PracticalDto>($"{NavigationManager.BaseUri}api/practicals", Practical);
+		if (result.IsSuccessStatusCode)
+		{
+			NavigationManager.NavigateTo("/practicals");
+		}
+		errorMessage = result.Content.ToString();
+	}
+}

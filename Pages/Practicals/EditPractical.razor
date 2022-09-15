@@ -1,0 +1,72 @@
+﻿@page "/practicals/edit/{practicalId:int}"
+@attribute [Authorize]
+
+@using JustCause.Dtos
+
+@inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+@inject IJSRuntime JsRuntime
+@inject IJSRuntime JsRuntime
+
+<h3>Edit Practical</h3>
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+	<div class="alert alert-danger">
+		@errorMessage
+	</div>
+}
+@if(Practical == null)
+{
+	<h2>Loading...</h2>
+}
+else{
+
+<EditForm Context="editContext" Model="Practical" OnValidSubmit=HandleSubmit>
+	<DataAnnotationsValidator />
+	<ValidationSummary />
+	<div class="form-group">
+		<label class="form-label">Name</label>
+		<InputText class="form-control my-3" @bind-Value="Practical.Name" />
+	</div>
+	<div class="form-group">
+		<label>Max Number of Spaces</label>
+		<InputNumber @bind-Value="Practical.MaxSize" />
+	</div>
+	<button type="submit" class="btn btn-primary my-2">Update</button>
+	<a class="btn btn-secondary" href="/practicals">Back To List</a>
+</EditForm>
+}
+
+@code {
+	[Parameter]
+	public int PracticalId {get; set;}
+	PracticalDto? Practical;
+	string? errorMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var practical = await HttpClient.GetFromJsonAsync<PracticalDto>
+			($"{NavigationManager.BaseUri}api/practicals/{PracticalId}");
+		
+		if(practical!= null)
+		{
+			Practical = practical;
+		}
+	}
+	async Task HandleSubmit()
+	{
+		var result = await HttpClient
+		.PutAsJsonAsync<PracticalDto>($"{NavigationManager.BaseUri}api/practicals", Practical!);
+		if (result.IsSuccessStatusCode)
+		{
+			var message = new {
+				title = "Successfully Updated!",
+				icon = "success"
+			};
+
+			await JsRuntime.InvokeVoidAsync("swal",message);
+			NavigationManager.NavigateTo("/practicals");
+		}
+		errorMessage = result.Content.ToString();
+	}
+}

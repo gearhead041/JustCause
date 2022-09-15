@@ -1,0 +1,52 @@
+﻿@page "/students/details/{studentid:int}"
+
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+
+
+@if (Student == null)
+{
+	<h2>Loading ...</h2>
+}
+else
+{
+	<div class="card">
+		<div class="card-header">
+			<h3>Registration Details</h3>
+		</div>
+		<div class="card=body">
+			<br/>
+			<i class="fa-solid fa-circle-user fa-5x"></i>
+			<div class="form-box">
+				<label class="form-label">
+					Name
+				</label>
+				<input class="form-control" disabled type="text" @bind="@Student.Name" />
+				<label class="form-label">
+					Matric Number
+				</label>
+				<input class="form-control" type="text" disabled @bind="@Student.MatricNumber" />
+				<label>
+					Practical Registered
+				</label>
+				@if(Student.Practical != null)
+				{
+					<input class="form-control" disabled type="text" @bind="@Student.Practical.Name" />
+				}
+			</div>
+		</div>
+	</div>
+}
+@code {
+	[Parameter]
+	public int StudentId { get; set; }
+	StudentDto? Student;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var response = await HttpClient
+		.GetFromJsonAsync<StudentDto>($"{NavigationManager.BaseUri}api/students/{StudentId}");
+		if (response != null)
+			Student = response;
+	}
+}

@@ -3,8 +3,8 @@
 
 @using JustCause.Dtos
 @inject NavigationManager NavigationManager
-@inject HttpClient HttpClient
 @inject IJSRuntime JsRuntime
+@inject IServiceManager serviceManager
 
 <h3>Add New Practical</h3>
 @if (!string.IsNullOrEmpty(errorMessage))
@@ -33,12 +33,11 @@
 	string? errorMessage;
 	async Task HandleSubmit()
 	{
-		var result = await HttpClient
-		.PostAsJsonAsync<PracticalDto>($"{NavigationManager.BaseUri}api/practicals", Practical);
-		if (result.IsSuccessStatusCode)
+		var practical = await serviceManager.PracticalService.CreatePracticalAsync(Practical);
+		if (practical != null)
 		{
 			var message = new {
-				title = "Successfully Updated!",
+				title = "Successfully Created!",
 				icon = "success"
 			};
 

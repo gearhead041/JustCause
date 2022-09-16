@@ -2,11 +2,9 @@
 @attribute [Authorize]
 
 @using JustCause.Dtos
-
 @inject NavigationManager NavigationManager
-@inject HttpClient HttpClient
 @inject IJSRuntime JsRuntime
-@inject IJSRuntime JsRuntime
+@inject IServiceManager serviceManager
 
 <h3>Edit Practical</h3>
 @if (!string.IsNullOrEmpty(errorMessage))
@@ -45,19 +43,16 @@ else{
 
 	protected override async Task OnInitializedAsync()
 	{
-		var practical = await HttpClient.GetFromJsonAsync<PracticalDto>
-			($"{NavigationManager.BaseUri}api/practicals/{PracticalId}");
-		
+		var practical = await serviceManager.PracticalService.GetPracticalAsync(PracticalId);
 		if(practical!= null)
-		{
 			Practical = practical;
-		}
 	}
+
 	async Task HandleSubmit()
 	{
-		var result = await HttpClient
-		.PutAsJsonAsync<PracticalDto>($"{NavigationManager.BaseUri}api/practicals", Practical!);
-		if (result.IsSuccessStatusCode)
+		var practical = await serviceManager.PracticalService.UpdatePracticalAsync(Practical!);
+        await serviceManager.Save();
+		if (practical != null)
 		{
 			var message = new {
 				title = "Successfully Updated!",
@@ -67,6 +62,5 @@ else{
 			await JsRuntime.InvokeVoidAsync("swal",message);
 			NavigationManager.NavigateTo("/practicals");
 		}
-		//errorMessage = result.Content.ToString();
 	}
 }

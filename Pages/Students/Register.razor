@@ -1,10 +1,10 @@
 ﻿@page "/"
 @using JustCause.Dtos
 
-@inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
 @inject NavigationManager NavigationManager
+@inject IServiceManager serviceManager
 
 <div class="card">
 	<div class="card-header">
@@ -68,19 +68,16 @@
 	}
 	protected override async Task OnInitializedAsync()
 	{
-		var practicals = await HttpClient.GetFromJsonAsync<List<PracticalDto>>
-			($"{NavigationManager.BaseUri}api/practicals");
+		var practicals = await serviceManager.PracticalService.GetAllPracticalsAsync();
 		if(practicals != null)
 			Practicals = practicals.Where( p => p!.StudentRegistrations!.Count() < p.MaxSize);
 	}
 
 	async Task HandleSubmit()
 	{
-		var response = await HttpClient.PostAsJsonAsync<StudentDto>($"{NavigationManager.BaseUri}api/students", Student);
-
-		if (response.IsSuccessStatusCode)
+		var result = await serviceManager.StudentService.CreateStudent(Student);
+		if (result != null)
 		{
-
 			var message = new 
 			{
 				title = "Registration Succesful!",
@@ -88,13 +85,7 @@
 			};
 			 
 			await JsRuntime.InvokeVoidAsync("swal",message);
-
-			var location = response.Headers.Location?.ToString();
-			if(location != null)
-			{
-				var id = location.Split('/');
-				NavigationManager.NavigateTo($"/students/details/{id[id.Length - 1]}");
-			}
+			NavigationManager.NavigateTo($"/students/details/{result.Id}");
 		}
 
 	}

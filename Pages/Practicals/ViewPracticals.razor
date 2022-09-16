@@ -1,9 +1,9 @@
 @page "/practicals"
 @attribute [Authorize]
 
-@inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
+@inject IServiceManager serviceManager
 
 <div class="my-flex">
     <div>
@@ -90,8 +90,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var practicals = await HttpClient.GetFromJsonAsync<List<PracticalDto>>
-        ($"{NavigationManager.BaseUri}api/practicals");
+        var practicals = await serviceManager.PracticalService.GetAllPracticalsAsync();
         Practicals = practicals;
     }
 
@@ -123,19 +122,20 @@ else
             IsDownloading = true;
             StateHasChanged();
             string fileName;
-
+            byte[] fileBytes;
             if (practicalId == 0)
             {
                 fileName = "Student Registrations ";
+                fileBytes = serviceManager.ExportService.CreateExport(Practicals!);
             }
             else
             {
-                var practicalToSend = Practicals!.SingleOrDefault(p => p.Id == practicalId);
-                fileName = "Student Registrations " + practicalToSend!.Name;
+                var practical = Practicals!.Single(p => p.Id == practicalId);
+                fileName = "Student Registrations " + practical!.Name;
+                fileBytes = serviceManager.ExportService
+                    .CreateExport( new List<PracticalDto>{practical});
             }
 
-            var response = await HttpClient.GetAsync($"{NavigationManager.BaseUri}api/export/{practicalId}");
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
             fileName += $" {DateTime.Now.ToString("yyyy-MM-dd")}.xlsx";
             await JsRuntime.InvokeAsync<object>("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
 
@@ -165,21 +165,20 @@ else
                 }
             },
             dangerMode = false
+            
         };
 
         if (await JsRuntime.InvokeAsync<bool>("swal", message))
         {
-            var response = await HttpClient.DeleteAsync($"{NavigationManager.BaseUri}api/practicals/{practicalId}");
-            if (response.IsSuccessStatusCode)
+            await serviceManager.PracticalService.DeletePracticalAsync(practicalId);
+            await serviceManager.Save();
+            var successMessage = new
             {
-                var successMessage = new
-                {
-                    title = "Practical Deleted",
-                    icon = "success"
-                };
-                await JsRuntime.InvokeVoidAsync("swal", successMessage);
-                StateHasChanged();
-            }
+                title = "Practical Deleted",
+                icon = "success"
+            };
+            await JsRuntime.InvokeVoidAsync("swal", successMessage);
+            StateHasChanged();
         }
 
     }

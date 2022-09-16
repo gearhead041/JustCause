@@ -1,6 +1,6 @@
 ﻿@page "/students/details/{studentid:int}"
 
-@inject HttpClient HttpClient
+@inject IServiceManager serviceManager
 @inject NavigationManager NavigationManager
 
 
@@ -44,9 +44,8 @@ else
 
 	protected override async Task OnInitializedAsync()
 	{
-		var response = await HttpClient
-		.GetFromJsonAsync<StudentDto>($"{NavigationManager.BaseUri}api/students/{StudentId}");
-		if (response != null)
-			Student = response;
+		var result = await serviceManager.StudentService.GetStudent(StudentId);
+		if (result != null)
+			Student = result;
 	}
 }

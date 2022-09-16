@@ -1,8 +1,8 @@
 @page "/practicals/{practicalid:int}"
 @attribute [Authorize]
 
-@inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
+@inject IServiceManager serviceManager
 
 @if (Practical == null)
 {
@@ -46,8 +46,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var practical = await HttpClient
-        .GetFromJsonAsync<PracticalDto>($"{NavigationManager.BaseUri}api/practicals/{PracticalId}");
+        var practical = await serviceManager.PracticalService.GetPracticalAsync(PracticalId);
         if (practical != null)
             Practical = practical;
     }
